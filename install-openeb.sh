@@ -38,3 +38,6 @@ cmake -B build \
 # 4. Compile and output artifacts locally
 cmake --build build -j "$(nproc)"
 cmake --install build
+
+mkdir -p dist/etc/udev/
+cp hal_psee_plugins/resources/rules/*.rules dist/etc/udev
