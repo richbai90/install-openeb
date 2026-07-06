@@ -1,0 +1,933 @@
+From d65d5a14901227fa91e1edb688834bd8a2686422 Mon Sep 17 00:00:00 2001
+From: Rich Baird <rich@rbaird.me>
+Date: Fri, 3 Jul 2026 18:43:10 -0600
+Subject: [PATCH] add vcpkg installer
+
+---
+ cmake/overlays/ports/gtk3/0001-build.patch    |  13 +++
+ .../ports/gtk3/avoid-multiple-definition.diff |  13 +++
+ .../ports/gtk3/cairo-cpp-linkage.patch        |  62 ++++++++++
+ cmake/overlays/ports/gtk3/portfile.cmake      | 109 ++++++++++++++++++
+ cmake/overlays/ports/gtk3/vcpkg.json          | 103 +++++++++++++++++
+ .../libsystemd/disable-warning-nonnull.patch  |  14 +++
+ .../ports/libsystemd/fix-2604-build.patch     |  42 +++++++
+ .../ports/libsystemd/only-libsystemd.patch    |  58 ++++++++++
+ .../overlays/ports/libsystemd/pkgconfig.patch |  25 ++++
+ .../overlays/ports/libsystemd/portfile.cmake  |  87 ++++++++++++++
+ cmake/overlays/ports/libsystemd/vcpkg.json    |  28 +++++
+ cmake/overlays/ports/libusb/portfile.cmake    |  74 ++++++++++++
+ cmake/overlays/ports/libusb/usage             |   5 +
+ .../ports/libusb/vcpkg-cmake-wrapper.cmake    |  14 +++
+ cmake/overlays/ports/libusb/vcpkg.json        |  28 +++++
+ cmake/overlays/ports/szip/portfile.cmake      |  48 ++++++++
+ cmake/overlays/ports/szip/vcpkg.json          |   8 ++
+ .../overlays/triplets/x64-linux-release.cmake |  11 ++
+ vcpkg.json                                    |  28 +++++
+ 19 files changed, 770 insertions(+)
+ create mode 100644 cmake/overlays/ports/gtk3/0001-build.patch
+ create mode 100644 cmake/overlays/ports/gtk3/avoid-multiple-definition.diff
+ create mode 100644 cmake/overlays/ports/gtk3/cairo-cpp-linkage.patch
+ create mode 100644 cmake/overlays/ports/gtk3/portfile.cmake
+ create mode 100644 cmake/overlays/ports/gtk3/vcpkg.json
+ create mode 100644 cmake/overlays/ports/libsystemd/disable-warning-nonnull.patch
+ create mode 100644 cmake/overlays/ports/libsystemd/fix-2604-build.patch
+ create mode 100644 cmake/overlays/ports/libsystemd/only-libsystemd.patch
+ create mode 100644 cmake/overlays/ports/libsystemd/pkgconfig.patch
+ create mode 100644 cmake/overlays/ports/libsystemd/portfile.cmake
+ create mode 100644 cmake/overlays/ports/libsystemd/vcpkg.json
+ create mode 100644 cmake/overlays/ports/libusb/portfile.cmake
+ create mode 100644 cmake/overlays/ports/libusb/usage
+ create mode 100644 cmake/overlays/ports/libusb/vcpkg-cmake-wrapper.cmake
+ create mode 100644 cmake/overlays/ports/libusb/vcpkg.json
+ create mode 100644 cmake/overlays/ports/szip/portfile.cmake
+ create mode 100644 cmake/overlays/ports/szip/vcpkg.json
+ create mode 100644 cmake/overlays/triplets/x64-linux-release.cmake
+ create mode 100644 vcpkg.json
+
+diff --git a/cmake/overlays/ports/gtk3/0001-build.patch b/cmake/overlays/ports/gtk3/0001-build.patch
+new file mode 100644
+index 0000000..d71898e
+--- /dev/null
++++ b/cmake/overlays/ports/gtk3/0001-build.patch
+@@ -0,0 +1,13 @@
++diff --git a/meson.build b/meson.build
++index 397ea07..dd6b888 100644
++--- a/meson.build
+++++ b/meson.build
++@@ -997,7 +997,7 @@ subdir('docs/reference')
++ 
++ install_data('m4macros/gtk-3.0.m4', install_dir: join_paths(get_option('datadir'), 'aclocal'))
++ 
++-if not meson.is_cross_build()
+++if false
++   gnome.post_install(
++     glib_compile_schemas: true,
++     gio_querymodules: gio_module_dirs,
+diff --git a/cmake/overlays/ports/gtk3/avoid-multiple-definition.diff b/cmake/overlays/ports/gtk3/avoid-multiple-definition.diff
+new file mode 100644
+index 0000000..94a54e8
+--- /dev/null
++++ b/cmake/overlays/ports/gtk3/avoid-multiple-definition.diff
+@@ -0,0 +1,13 @@
++diff --git a/gtk/inspector/size-groups.c b/gtk/inspector/size-groups.c
++index eb185ed..f7c604d 100644
++--- a/gtk/inspector/size-groups.c
+++++ b/gtk/inspector/size-groups.c
++@@ -44,7 +44,7 @@ enum {
++   LAST_PROPERTY
++ };
++ 
++-GParamSpec *properties[LAST_PROPERTY] = { NULL };
+++static GParamSpec *properties[LAST_PROPERTY] = { NULL };
++ 
++ GType size_group_row_get_type (void);
++ 
+diff --git a/cmake/overlays/ports/gtk3/cairo-cpp-linkage.patch b/cmake/overlays/ports/gtk3/cairo-cpp-linkage.patch
+new file mode 100644
+index 0000000..b56e6ee
+--- /dev/null
++++ b/cmake/overlays/ports/gtk3/cairo-cpp-linkage.patch
+@@ -0,0 +1,62 @@
++diff --git a/gtk/meson.build b/gtk/meson.build
++index ea866d8..0d312f3 100644
++--- a/gtk/meson.build
+++++ b/gtk/meson.build
++@@ -1102,6 +1102,7 @@ gtk_query_settings = executable(
++   'gtk-query-settings.c',
++   c_args: gtk_cargs,
++   dependencies: libgtk_dep,
+++  link_language: 'cpp',
++   install: true
++ )
++ gtk_tools += gtk_query_settings
++@@ -1111,6 +1112,7 @@ gtk_builder_tool = executable(
++   'gtk-builder-tool.c',
++   c_args: gtk_cargs,
++   dependencies: libgtk_dep,
+++  link_language: 'cpp',
++   install: true
++ )
++ gtk_tools += gtk_builder_tool
++@@ -1143,6 +1145,7 @@ gtk_update_icon_cache = executable(
++   extra_update_icon_cache_objs,
++   c_args: gtk_cargs,
++   dependencies: libgtk_dep,
+++  link_language: 'cpp',
++   install: true
++ )
++ gtk_tools += gtk_update_icon_cache
++@@ -1153,6 +1156,7 @@ gtk_query_immodules = executable(
++   'gtkutils.c',
++   c_args: gtk_cargs,
++   dependencies: libgtk_dep,
+++  link_language: 'cpp',
++   install: true
++ )
++ gtk_tools += gtk_query_immodules
++@@ -1162,6 +1166,7 @@ gtk_encode_symbolic_svg = executable(
++   'encodesymbolic.c',
++   c_args: gtk_cargs,
++   dependencies: libgtk_dep,
+++  link_language: 'cpp',
++   install: true
++ )
++ gtk_tools += gtk_encode_symbolic_svg
++@@ -1171,6 +1176,7 @@ gtk_launch = executable(
++   'gtk-launch.c',
++   c_args: gtk_cargs,
++   dependencies: libgtk_dep,
+++  link_language: 'cpp',
++   install: true
++ )
++ gtk_tools += gtk_launch
++diff --git a/meson.build b/meson.build
++index dd6b888..e60ad30 100644
++--- a/meson.build
+++++ b/meson.build
++@@ -1,4 +1,4 @@
++-project('gtk', 'c',
+++project('gtk', 'c', 'cpp',
++   version: '3.24.52',
++   default_options: [
++     'buildtype=debugoptimized',
+diff --git a/cmake/overlays/ports/gtk3/portfile.cmake b/cmake/overlays/ports/gtk3/portfile.cmake
+new file mode 100644
+index 0000000..0147227
+--- /dev/null
++++ b/cmake/overlays/ports/gtk3/portfile.cmake
+@@ -0,0 +1,109 @@
++set(warning_length 24)
++string(LENGTH "${CURRENT_BUILDTREES_DIR}" buildtrees_path_length)
++if(buildtrees_path_length GREATER warning_length AND CMAKE_HOST_WIN32)
++    message(WARNING "${PORT}'s buildsystem uses very long paths and may fail on your system.\n"
++        "We recommend moving vcpkg to a short path such as 'C:\\vcpkg' or using the subst command."
++    )
++endif()
++
++string(REGEX MATCH [[^[0-9][0-9]*\.[1-9][0-9]*]] VERSION_MAJOR_MINOR ${VERSION})
++vcpkg_download_distfile(ARCHIVE
++    URLS
++        "https://download.gnome.org/sources/gtk/${VERSION_MAJOR_MINOR}/gtk-${VERSION}.tar.xz"
++        "https://www.mirrorservice.org/sites/ftp.gnome.org/pub/GNOME/sources/gtk/${VERSION_MAJOR_MINOR}/gtk-${VERSION}.tar.xz"
++    FILENAME "GNOME-gtk-${VERSION}.tar.xz"
++    SHA512 20c119cf1a8c390c9d572729f36215fe034731d9e741a0a30c96671f4606ef8b7cdbe5d5ebe986f6f6c9ac03b3ba5cddd8d63da0ebfc5341d179ec9dea5e82eb
++)
++
++vcpkg_extract_source_archive(SOURCE_PATH
++    ARCHIVE "${ARCHIVE}"
++    PATCHES
++        0001-build.patch
++        cairo-cpp-linkage.patch
++        avoid-multiple-definition.diff
++)
++
++# Disable warnings as errors
++vcpkg_replace_string("${SOURCE_PATH}/meson.build" "-Werror" "-Wno-error")
++
++vcpkg_find_acquire_program(PKGCONFIG)
++get_filename_component(PKGCONFIG_DIR "${PKGCONFIG}" DIRECTORY )
++vcpkg_add_to_path("${PKGCONFIG_DIR}") # Post install script runs pkg-config so it needs to be on PATH
++vcpkg_add_to_path("${CURRENT_HOST_INSTALLED_DIR}/tools/glib/")
++vcpkg_add_to_path("${CURRENT_HOST_INSTALLED_DIR}/tools/gdk-pixbuf")
++vcpkg_add_to_path("${CURRENT_HOST_INSTALLED_DIR}/tools/gettext/bin")
++
++
++if("introspection" IN_LIST FEATURES)
++    list(APPEND OPTIONS_RELEASE -Dintrospection=true)
++    vcpkg_get_gobject_introspection_programs(PYTHON3 GIR_COMPILER GIR_SCANNER)
++else()
++    list(APPEND OPTIONS_RELEASE -Dintrospection=false)
++endif()
++
++set(BINARIES "")
++
++if("wayland" IN_LIST FEATURES)
++    list(APPEND OPTIONS -Dwayland_backend=true)
++    if(X_VCPKG_FORCE_VCPKG_WAYLAND_LIBRARIES)
++        list(APPEND BINARIES "wayland-scanner='${CURRENT_HOST_INSTALLED_DIR}/tools/wayland/wayland-scanner${VCPKG_HOST_EXECUTABLE_SUFFIX}'")
++    endif()
++else()
++    list(APPEND OPTIONS -Dwayland_backend=false)
++endif()
++
++vcpkg_configure_meson(
++    SOURCE_PATH "${SOURCE_PATH}"
++    OPTIONS
++        ${OPTIONS}
++        -Ddemos=false
++        -Dexamples=false
++        -Dtests=false
++        -Dgtk_doc=false
++        -Dman=false
++        -Dxinerama=no               # Enable support for the X11 Xinerama extension
++        -Dcloudproviders=false      # Enable the cloudproviders support
++        -Dprofiler=false            # include tracing support for sysprof
++        -Dtracker3=false            # Enable Tracker3 filechooser search
++        -Dcolord=no                 # Build colord support for the CUPS printing backend
++    OPTIONS_RELEASE
++        ${OPTIONS_RELEASE}
++    OPTIONS_DEBUG
++        -Dintrospection=false
++    ADDITIONAL_BINARIES
++        "glib-genmarshal='${CURRENT_HOST_INSTALLED_DIR}/tools/glib/glib-genmarshal'"
++        "glib-mkenums='${CURRENT_HOST_INSTALLED_DIR}/tools/glib/glib-mkenums'"
++        "glib-compile-resources='${CURRENT_HOST_INSTALLED_DIR}/tools/glib/glib-compile-resources${VCPKG_HOST_EXECUTABLE_SUFFIX}'"
++        "gdbus-codegen='${CURRENT_HOST_INSTALLED_DIR}/tools/glib/gdbus-codegen'"
++        "glib-compile-schemas='${CURRENT_HOST_INSTALLED_DIR}/tools/glib/glib-compile-schemas${VCPKG_HOST_EXECUTABLE_SUFFIX}'"
++        "g-ir-compiler='${GIR_COMPILER}'"
++        "g-ir-scanner='${GIR_SCANNER}'"
++        ${BINARIES}
++)
++
++# Reduce command line lengths, in particular for static windows builds.
++foreach(dir IN ITEMS "${TARGET_TRIPLET}-dbg" "${TARGET_TRIPLET}-rel")
++    if(EXISTS "${CURRENT_BUILDTREES_DIR}/${dir}/build.ninja")
++        vcpkg_replace_string("${CURRENT_BUILDTREES_DIR}/${dir}/build.ninja" "/${dir}/../src/" "/src/")
++    endif()
++endforeach()
++vcpkg_install_meson(ADD_BIN_TO_PATH)
++
++vcpkg_copy_pdbs()
++
++vcpkg_fixup_pkgconfig()
++
++set(GTK_TOOLS
++    gtk-builder-tool
++    gtk-encode-symbolic-svg
++    gtk-launch
++    gtk-query-immodules-3.0
++    gtk-query-settings
++    gtk-update-icon-cache
++)
++vcpkg_copy_tools(TOOL_NAMES ${GTK_TOOLS} AUTO_CLEAN)
++
++file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/etc")
++file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
++
++vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")
+diff --git a/cmake/overlays/ports/gtk3/vcpkg.json b/cmake/overlays/ports/gtk3/vcpkg.json
+new file mode 100644
+index 0000000..107438e
+--- /dev/null
++++ b/cmake/overlays/ports/gtk3/vcpkg.json
+@@ -0,0 +1,103 @@
++{
++  "name": "gtk3",
++  "version": "3.24.52",
++  "port-version": 2,
++  "description": "Portable library for creating graphical user interfaces.",
++  "homepage": "https://www.gtk.org/",
++  "license": null,
++  "supports": "!android",
++  "dependencies": [
++    {
++      "name": "at-spi2-atk",
++      "platform": "linux"
++    },
++    "atk",
++    {
++      "name": "cairo",
++      "default-features": false,
++      "features": [
++        "gobject"
++      ]
++    },
++    {
++      "name": "cairo",
++      "default-features": false,
++      "features": [
++        "x11"
++      ],
++      "platform": "linux | freebsd | openbsd"
++    },
++    {
++      "name": "gdk-pixbuf",
++      "host": true
++    },
++    "gdk-pixbuf",
++    {
++      "name": "gettext",
++      "host": true,
++      "default-features": false,
++      "features": [
++        "tools"
++      ]
++    },
++    "gettext-libintl",
++    "glib",
++    {
++      "name": "glib",
++      "host": true
++    },
++    "libepoxy",
++    {
++      "name": "libxi",
++      "platform": "!windows & !osx"
++    },
++    {
++      "name": "libxrandr",
++      "platform": "!windows & !osx"
++    },
++    "pango",
++    {
++      "name": "vcpkg-tool-meson",
++      "host": true
++    }
++  ],
++  "features": {
++    "introspection": {
++      "description": "Build with introspection",
++      "supports": "!static",
++      "dependencies": [
++        {
++          "name": "atk",
++          "default-features": false,
++          "features": [
++            "introspection"
++          ]
++        },
++        {
++          "name": "gdk-pixbuf",
++          "default-features": false,
++          "features": [
++            "introspection"
++          ]
++        },
++        "gobject-introspection",
++        {
++          "name": "pango",
++          "default-features": false,
++          "features": [
++            "introspection"
++          ]
++        }
++      ]
++    },
++    "wayland": {
++      "description": "Build with Wayland support",
++      "supports": "linux | freebsd | openbsd",
++      "dependencies": [
++        "libxkbcommon",
++        "wayland",
++        "wayland-protocols"
++      ]
++    }
++  }
++}
+diff --git a/cmake/overlays/ports/libsystemd/disable-warning-nonnull.patch b/cmake/overlays/ports/libsystemd/disable-warning-nonnull.patch
+new file mode 100644
+index 0000000..1ce5b68
+--- /dev/null
++++ b/cmake/overlays/ports/libsystemd/disable-warning-nonnull.patch
+@@ -0,0 +1,14 @@
++diff --git a/src/basic/memory-util.h b/src/basic/memory-util.h
++index 1179513..fc39e06 100644
++--- a/src/basic/memory-util.h
+++++ b/src/basic/memory-util.h
++@@ -41,7 +41,9 @@ static inline int memcmp_safe(const void *s1, const void *s2, size_t n) {
++                 return 0;
++         assert(s1);
++         assert(s2);
+++DISABLE_WARNING_NONNULL
++         return memcmp(s1, s2, n);
+++REENABLE_WARNING
++ }
++ 
++ /* Compare s1 (length n1) with s2 (length n2) in lexicographic order. */
+diff --git a/cmake/overlays/ports/libsystemd/fix-2604-build.patch b/cmake/overlays/ports/libsystemd/fix-2604-build.patch
+new file mode 100644
+index 0000000..83c32e4
+--- /dev/null
++++ b/cmake/overlays/ports/libsystemd/fix-2604-build.patch
+@@ -0,0 +1,42 @@
++diff --git a/meson.build b/meson.build
++index 3d50c83..802de14 100644
++--- a/meson.build
+++++ b/meson.build
++@@ -371,6 +371,8 @@ possible_common_cc_flags = [
++         '-Warray-bounds=2',
++         '-Wdate-time',
++         '-Wendif-labels',
+++]
+++vcpkg_omit_werror = [
++         '-Werror=bool-compare',
++         '-Werror=discarded-qualifiers',
++         '-Werror=flex-array-member-not-at-end',
++@@ -392,6 +394,8 @@ possible_common_cc_flags = [
++         '-Werror=shift-overflow=2',
++         '-Werror=strict-flex-arrays',
++         '-Werror=undef',
+++]
+++possible_common_cc_flags += [
++         '-Wfloat-equal',
++         # gperf prevents us from enabling this because it does not emit fallthrough
++         # attribute with clang.
++@@ -511,19 +515,6 @@ add_project_link_arguments(
++ userspace_c_args += cc.get_supported_arguments(possible_cc_flags)
++ userspace_c_ld_args += cc.get_supported_link_arguments(possible_link_flags)
++ 
++-if cc.compiles('''
++-   #include <time.h>
++-   #include <inttypes.h>
++-   typedef uint64_t usec_t;
++-   usec_t now(clockid_t clock);
++-   int main(void) {
++-           struct timespec now;
++-           return 0;
++-   }
++-''', args: '-Werror=shadow', name : '-Werror=shadow with local shadowing')
++-        add_project_arguments('-Werror=shadow', language : 'c')
++-endif
++-
++ if cxx_cmd != ''
++         add_project_arguments(cxx.get_supported_arguments(basic_disabled_warnings), language : 'cpp')
++ endif
+diff --git a/cmake/overlays/ports/libsystemd/only-libsystemd.patch b/cmake/overlays/ports/libsystemd/only-libsystemd.patch
+new file mode 100644
+index 0000000..9a8eae4
+--- /dev/null
++++ b/cmake/overlays/ports/libsystemd/only-libsystemd.patch
+@@ -0,0 +1,58 @@
++diff --git a/meson.build b/meson.build
++index 3672005..a39e0df 100644
++--- a/meson.build
+++++ b/meson.build
++@@ -2090,14 +2090,13 @@ libsystemd_includes = [basic_includes, include_directories(
++ includes = [libsystemd_includes, include_directories('src/shared')]
++ 
++ subdir('po')
++-subdir('catalog')
+++support_url='https://github.com/microsoft/vcpkg/issues'
++ subdir('src/include')
++ subdir('src/libc')
++ subdir('src/fundamental')
++ subdir('src/basic')
++ subdir('src/libsystemd')
++-subdir('src/shared')
++-subdir('src/libudev')
+++static_libudev='unused'
++ 
++ libsystemd = shared_library(
++         'systemd',
++@@ -2115,7 +2114,8 @@ libsystemd = shared_library(
++                         threads,
++                         userspace],
++         link_depends : libsystemd_sym,
++-        install : true,
+++        build_by_default : static_libsystemd == 'false',
+++        install : static_libsystemd == 'false',
++         install_tag: 'libsystemd',
++         install_dir : libdir)
++ 
++@@ -2148,6 +2148,8 @@ else
++         alias_target('libsystemd', libsystemd)
++ endif
++ 
+++if false
+++
++ libudev = shared_library(
++         'udev',
++         version : libudev_version,
++@@ -3006,6 +3008,17 @@ if conf.get('ENABLE_HWDB') == 1
++         alias_target('hwdb', auto_suspend_rules, executables_by_name.get('systemd-hwdb'), hwdb_units)
++ endif
++ 
+++else
+++  # headers
+++  subdir('src/systemd')
+++  # subdir man
+++  want_html=false
+++  want_man=false
+++  # subdir shell-completion/*
+++  bashcompletiondir='no'
+++  zshcompletiondir='no'
+++endif
+++
++ alt_time_epoch = run_command('date', '-Is', '-u', '-d', f'@@time_epoch@', check : false)
++ if alt_time_epoch.returncode() != 0
++         # If the above fails, maybe the date(1) uses BSD-style syntax
+diff --git a/cmake/overlays/ports/libsystemd/pkgconfig.patch b/cmake/overlays/ports/libsystemd/pkgconfig.patch
+new file mode 100644
+index 0000000..9d4a631
+--- /dev/null
++++ b/cmake/overlays/ports/libsystemd/pkgconfig.patch
+@@ -0,0 +1,25 @@
++diff --git a/meson.build b/meson.build
++index 22b3c96..3d50c83 100644
++--- a/meson.build
+++++ b/meson.build
++@@ -996,6 +996,9 @@ threads = dependency('threads')
++ librt = cc.find_library('rt')
++ libm = cc.find_library('m')
++ libdl = cc.find_library('dl')
+++conf.set_quoted('PC_RT', librt.found() ? '-lrt' : '')
+++conf.set_quoted('PC_M',  libm.found()  ? '-lm'  : '')
+++conf.set_quoted('PC_DL', libdl.found() ? '-ldl' : '')
++ 
++ # On some distributions that use musl (e.g. Alpine), libintl.h may be provided by gettext rather than musl.
++ # In that case, we need to explicitly link with libintl.so.
++diff --git a/src/libsystemd/libsystemd.pc.in b/src/libsystemd/libsystemd.pc.in
++index 3a43ef6..930f16a 100644
++--- a/src/libsystemd/libsystemd.pc.in
+++++ b/src/libsystemd/libsystemd.pc.in
++@@ -17,4 +17,6 @@ Description: systemd Library
++ URL: {{PROJECT_URL}}
++ Version: {{PROJECT_VERSION}}
++ Libs: -L${libdir} -lsystemd
+++Libs.private: {{PC_DL}} {{PC_M}} {{PC_RT}}
+++Requires.private: libcap libcrypt liblz4 liblzma libzstd mount
++ Cflags: -I${includedir}
+diff --git a/cmake/overlays/ports/libsystemd/portfile.cmake b/cmake/overlays/ports/libsystemd/portfile.cmake
+new file mode 100644
+index 0000000..e9950cf
+--- /dev/null
++++ b/cmake/overlays/ports/libsystemd/portfile.cmake
+@@ -0,0 +1,87 @@
++vcpkg_from_github(
++  OUT_SOURCE_PATH SOURCE_PATH
++  REPO systemd/systemd
++  REF "v${VERSION}"
++  SHA512 63d15da49e7580952a48a0b50df20c1b398e4b77edf259510b0cdb9022e919387baadf2190194a50f1f582b83e0768c13997a4189cf0fb6a61b65015496d9c80
++  PATCHES
++    disable-warning-nonnull.patch
++    only-libsystemd.patch
++    pkgconfig.patch
++    fix-2604-build.patch
++)
++
++set(static false)
++if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
++  set(static pic)
++endif()
++
++vcpkg_find_acquire_program(PYTHON3)
++x_vcpkg_get_python_packages(
++    PYTHON_VERSION 3
++    PYTHON_EXECUTABLE "${PYTHON3}"
++    PACKAGES "jinja2"
++)
++
++vcpkg_configure_meson(
++  SOURCE_PATH "${SOURCE_PATH}"
++  OPTIONS
++    -Dwerror=false
++    -Dmode=release
++    -Dstatic-libsystemd=${static}
++    -Dtests=false
++    # disabled capabilites
++    -Ddns-over-tls=false
++    -Dtranslations=false
++    # disabled dependencies
++    -Dacl=disabled
++    -Dapparmor=disabled
++    -Daudit=disabled
++    -Dblkid=disabled
++    -Dbpf-framework=disabled
++    -Dbzip2=disabled
++    -Ddbus=disabled # tests only
++    -Delfutils=disabled
++    -Dfdisk=disabled
++    -Dgcrypt=disabled
++    -Dglib=disabled # tests only
++    -Dgnutls=disabled
++    -Dkmod=disabled
++    -Dlibcurl=disabled
++    -Dlibcryptsetup=disabled
++    -Dlibfido2=disabled
++    -Dlibidn=disabled
++    -Dlibidn2=disabled
++    -Dlibiptc=disabled
++    -Dmicrohttpd=disabled
++    -Dopenssl=disabled
++    -Dp11kit=disabled
++    -Dpam=disabled
++    -Dpcre2=disabled
++    -Dpolkit=disabled
++    -Dpwquality=disabled
++    -Dpasswdqc=disabled
++    -Dseccomp=disabled
++    -Dselinux=disabled
++    -Dtpm2=disabled
++    -Dxenctrl=disabled
++    -Dxkbcommon=disabled
++    -Dzlib=disabled
++    # enabled dependencies
++    -Dlz4=enabled
++    -Dxz=enabled
++    -Dzstd=enabled
++  ADDITIONAL_BINARIES
++    "gperf = ['${CURRENT_HOST_INSTALLED_DIR}/tools/gperf/gperf${HOST_EXECUTABLE_SUFFIX}']"
++)
++
++vcpkg_install_meson()
++
++file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
++
++vcpkg_fixup_pkgconfig()
++
++vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSES/README.md" "${SOURCE_PATH}/LICENSE.LGPL2.1"
++  COMMENT [[
++This port provides libsystemd.so/.a, which is based on sources in
++src/basic, src/fundamental, src/systemd and src/libsystemd.
++]])
+diff --git a/cmake/overlays/ports/libsystemd/vcpkg.json b/cmake/overlays/ports/libsystemd/vcpkg.json
+new file mode 100644
+index 0000000..dae803f
+--- /dev/null
++++ b/cmake/overlays/ports/libsystemd/vcpkg.json
+@@ -0,0 +1,28 @@
++{
++  "name": "libsystemd",
++  "version": "260.2",
++  "description": "System and Service Manager",
++  "homepage": "https://github.com/systemd/systemd",
++  "license": null,
++  "supports": "linux",
++  "dependencies": [
++    {
++      "name": "gperf",
++      "host": true
++    },
++    "libcap",
++    "liblzma",
++    "libmount",
++    "libxcrypt",
++    "lz4",
++    {
++      "name": "vcpkg-get-python-packages",
++      "host": true
++    },
++    {
++      "name": "vcpkg-tool-meson",
++      "host": true
++    },
++    "zstd"
++  ]
++}
+diff --git a/cmake/overlays/ports/libusb/portfile.cmake b/cmake/overlays/ports/libusb/portfile.cmake
+new file mode 100644
+index 0000000..e00c7a0
+--- /dev/null
++++ b/cmake/overlays/ports/libusb/portfile.cmake
+@@ -0,0 +1,74 @@
++if(VCPKG_TARGET_IS_LINUX)
++    message("${PORT} currently requires the following tools and libraries from the system package manager:\n    autoreconf\n    libudev\n\nThese can be installed on Ubuntu systems via apt-get install autoconf libudev-dev")
++endif()
++
++vcpkg_from_github(
++    OUT_SOURCE_PATH SOURCE_PATH
++    REPO libusb/libusb
++    REF "v${VERSION}"
++    SHA512 36afceae9a03c1543adb9c92fb9a9320b312282bfc8ac8db7b43983c2797c63f13ce94b8ae7aab2afa94ce68d53b6aa7a69efd8ab6b3711c072b89940d4ee734
++    HEAD_REF master
++)
++
++if(VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW)
++
++  if(VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
++      set(LIBUSB_PROJECT_TYPE dll)
++  else()
++      set(LIBUSB_PROJECT_TYPE static)
++  endif()
++
++  # The README.md file in the archive is a symlink to README
++  # which causes issues with the windows MSBUILD process
++  file(REMOVE "${SOURCE_PATH}/README.md")
++
++  vcpkg_msbuild_install(
++      SOURCE_PATH "${SOURCE_PATH}"
++      PROJECT_SUBPATH msvc/libusb_${LIBUSB_PROJECT_TYPE}.vcxproj
++  )
++
++  file(INSTALL "${SOURCE_PATH}/libusb/libusb.h"  DESTINATION "${CURRENT_PACKAGES_DIR}/include/libusb-1.0")
++  set(prefix "")
++  set(exec_prefix [[${prefix}]])
++  set(libdir [[${prefix}/lib]])
++  set(includedir [[${prefix}/include]])  
++  configure_file("${SOURCE_PATH}/libusb-1.0.pc.in" "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/libusb-1.0.pc" @ONLY)
++  vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/lib/pkgconfig/libusb-1.0.pc" " -lusb-1.0" " -llibusb-1.0")
++  if(NOT VCPKG_BUILD_TYPE)
++      set(includedir [[${prefix}/../include]])  
++      configure_file("${SOURCE_PATH}/libusb-1.0.pc.in" "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/libusb-1.0.pc" @ONLY)
++      vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/libusb-1.0.pc" " -lusb-1.0" " -llibusb-1.0")
++  endif()
++else()
++    vcpkg_list(SET MAKE_OPTIONS)
++    vcpkg_list(SET LIBUSB_LINK_LIBRARIES)
++    if(VCPKG_TARGET_IS_EMSCRIPTEN)
++        vcpkg_list(APPEND MAKE_OPTIONS BUILD_TRIPLET --host=wasm32)
++    endif()
++    if("udev" IN_LIST FEATURES)
++        vcpkg_list(APPEND MAKE_OPTIONS "--enable-udev")
++        vcpkg_list(APPEND LIBUSB_LINK_LIBRARIES udev)
++    else()
++        vcpkg_list(APPEND MAKE_OPTIONS "--disable-udev")
++    endif()
++    vcpkg_configure_make(
++        SOURCE_PATH "${SOURCE_PATH}"
++        AUTOCONFIG
++        OPTIONS 
++            ${MAKE_OPTIONS}
++            "--enable-examples-build=no"
++            "--enable-tests-build=no"
++    )
++    vcpkg_install_make()
++endif()
++
++vcpkg_fixup_pkgconfig()
++
++# -Wl,-framework,... is poorly handled in CMake
++vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/lib/pkgconfig/libusb-1.0.pc" " -Wl,-framework," " -framework " IGNORE_UNCHANGED)
++if(NOT VCPKG_BUILD_TYPE)
++    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/libusb-1.0.pc" " -Wl,-framework," " -framework " IGNORE_UNCHANGED)
++endif()
++
++file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
++vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")
+diff --git a/cmake/overlays/ports/libusb/usage b/cmake/overlays/ports/libusb/usage
+new file mode 100644
+index 0000000..98cce9c
+--- /dev/null
++++ b/cmake/overlays/ports/libusb/usage
+@@ -0,0 +1,5 @@
++libusb can be imported via CMake FindPkgConfig module:
++    find_package(PkgConfig REQUIRED)
++    pkg_check_modules(libusb REQUIRED IMPORTED_TARGET libusb-1.0)
++
++    target_link_libraries(main PRIVATE PkgConfig::libusb)
+diff --git a/cmake/overlays/ports/libusb/vcpkg-cmake-wrapper.cmake b/cmake/overlays/ports/libusb/vcpkg-cmake-wrapper.cmake
+new file mode 100644
+index 0000000..56cfe65
+--- /dev/null
++++ b/cmake/overlays/ports/libusb/vcpkg-cmake-wrapper.cmake
+@@ -0,0 +1,14 @@
++include(SelectLibraryConfigurations)
++
++find_path(LIBUSB_INCLUDE_DIR libusb.h PATH_SUFFIXES libusb-1.0)
++#find_library(LIBUSB_LIBRARY_DEBUG NAMES libusb-1.0 usb-1.0 NAMES_PER_DIR PATH_SUFFIXES lib PATHS "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug" NO_DEFAULT_PATH REQUIRED)
++find_library(LIBUSB_LIBRARY_RELEASE NAMES libusb-1.0 usb-1.0 NAMES_PER_DIR PATH_SUFFIXES lib PATHS "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}" NO_DEFAULT_PATH REQUIRED)
++
++select_library_configurations(LIBUSB)
++
++set(LIBUSB_INCLUDE_DIRS ${LIBUSB_INCLUDE_DIR})
++set(LIBUSB_LIBRARIES ${LIBUSB_LIBRARY})
++
++if (ON)
++    list(APPEND LIBUSB_LIBRARIES udev)
++endif()
+diff --git a/cmake/overlays/ports/libusb/vcpkg.json b/cmake/overlays/ports/libusb/vcpkg.json
+new file mode 100644
+index 0000000..14424be
+--- /dev/null
++++ b/cmake/overlays/ports/libusb/vcpkg.json
+@@ -0,0 +1,28 @@
++{
++  "name": "libusb",
++  "version": "1.0.27",
++  "port-version": 2,
++  "description": "a cross-platform library to access USB devices",
++  "homepage": "https://github.com/libusb/libusb",
++  "license": "LGPL-2.1-or-later",
++  "supports": "!uwp",
++  "dependencies": [
++    {
++      "name": "vcpkg-msbuild",
++      "host": true,
++      "platform": "windows & !mingw"
++    }
++  ],
++  "default-features": [
++    {
++      "name": "udev",
++      "platform": "linux"
++    }
++  ],
++  "features": {
++    "udev": {
++      "description": "Enable udev",
++      "supports": "linux"
++    }
++  }
++}
+diff --git a/cmake/overlays/ports/szip/portfile.cmake b/cmake/overlays/ports/szip/portfile.cmake
+new file mode 100644
+index 0000000..82c3e9b
+--- /dev/null
++++ b/cmake/overlays/ports/szip/portfile.cmake
+@@ -0,0 +1,48 @@
++# 1. Suppress warnings regarding missing headers/libraries for this wrapper port
++set(VCPKG_POLICY_EMPTY_INCLUDE_FOLDER enabled)
++set(VCPKG_POLICY_EMPTY_PACKAGE enabled)
++
++# 2. Deploy the CMake target forwarding configuration
++file(WRITE "${CURRENT_PACKAGES_DIR}/share/szip/szipConfig.cmake" [[
++if(TARGET libaec::aec AND NOT TARGET SZIP::SZIP)
++    add_library(SZIP::SZIP INTERFACE IMPORTED)
++    target_link_libraries(SZIP::SZIP INTERFACE libaec::aec libaec::sz)
++    set(SZIP_FOUND TRUE)
++elseif(TARGET aec AND NOT TARGET SZIP::SZIP)
++    add_library(SZIP::SZIP INTERFACE IMPORTED)
++    target_link_libraries(SZIP::SZIP INTERFACE aec sz)
++    set(SZIP_FOUND TRUE)
++else()
++    get_filename_component(_SZIP_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
++    add_library(SZIP::SZIP INTERFACE IMPORTED)
++    target_include_directories(SZIP::SZIP INTERFACE "${_SZIP_ROOT}/include")
++    target_link_libraries(SZIP::SZIP INTERFACE 
++        "${_SZIP_ROOT}/lib/libaec.so" 
++        "${_SZIP_ROOT}/lib/libsz.so"
++    )
++    set(SZIP_FOUND TRUE)
++endif()
++]])
++
++# 3. Deploy szip.pc for both release and debug paths to satisfy vcpkg_fixup_pkgconfig
++set(PC_TEMPLATE [[
++prefix=${pcfiledir}/../..
++exec_prefix=${prefix}
++libdir=${prefix}/lib
++includedir=${prefix}/include
++
++Name: szip
++Description: Wrapper PC file redirecting szip to libaec
++Version: 1.0.0
++Cflags: -I${includedir}
++Libs: -L${libdir} -laec -lsz
++]])
++
++file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/lib/pkgconfig")
++file(WRITE "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/szip.pc" "${PC_TEMPLATE}")
++
++file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig")
++file(WRITE "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/szip.pc" "${PC_TEMPLATE}")
++
++# 4. Add the mandatory copyright file
++file(WRITE "${CURRENT_PACKAGES_DIR}/share/szip/copyright" "Dummy redirect port for libaec compatibility.")
+diff --git a/cmake/overlays/ports/szip/vcpkg.json b/cmake/overlays/ports/szip/vcpkg.json
+new file mode 100644
+index 0000000..111e6d5
+--- /dev/null
++++ b/cmake/overlays/ports/szip/vcpkg.json
+@@ -0,0 +1,8 @@
++{
++  "name": "szip",
++  "version-string": "1.0.0",
++  "description": "Redirect port for libaec",
++  "dependencies": [
++    "libaec"
++  ]
++}
+diff --git a/cmake/overlays/triplets/x64-linux-release.cmake b/cmake/overlays/triplets/x64-linux-release.cmake
+new file mode 100644
+index 0000000..014a1a7
+--- /dev/null
++++ b/cmake/overlays/triplets/x64-linux-release.cmake
+@@ -0,0 +1,11 @@
++set(VCPKG_TARGET_ARCHITECTURE x64)
++set(VCPKG_CRT_LINKAGE dynamic)
++set(VCPKG_LIBRARY_LINKAGE dynamic)
++
++set(VCPKG_CMAKE_SYSTEM_NAME Linux)
++set(VCPKG_BUILD_TYPE release)
++set(VCPKG_MESON_CONFIGURE_OPTIONS "-Dwerror=false")
++set(WARNING_OVERRIDES "-Wno-error=all -Wno-error=implicit -Wno-error=nonnull -Wno-error=init-self -Wno-error=main -Wno-error=missing-braces -Wno-error=sequence-point -Wno-error=return-type -Wno-error=trigraphs -Wno-error=array-bounds -Wno-error=write-strings
++-Wno-error=address -Wno-error=int-to-pointer-cast -Wno-error=pointer-to-int-cast -Wno-error=empty-body -Wno-error=unused-but-set-variable")
++set(VCPKG_C_FLAGS "${VCPKG_C_FLAGS} ${WARNING_OVERRIDES}")
++set(VCPKG_CXX_FLAGS "${VCPKG_CXX_FLAGS} ${WARNING_OVERRIDES} -include cstdint")
+diff --git a/vcpkg.json b/vcpkg.json
+new file mode 100644
+index 0000000..b3f5e13
+--- /dev/null
++++ b/vcpkg.json
+@@ -0,0 +1,28 @@
++{ "name": "openeb",
++  "version-string": "5.2.0",
++  "builtin-baseline": "b2cb0da531c2f1f740045bfe7c4dac59f0b2b69c",
++  "dependencies": [
++"libusb",
++"boost",
++"opencv",
++"dirent",
++"gtest",
++"pybind11",
++"glew",
++"glfw3",
++"hdf5",
++"protobuf"
++  ],
++  "overrides": [
++    { "name": "libusb", "version-string": "1.0.26"},
++    { "name": "boost", "version-string": "1.84.0"},
++    { "name": "opencv", "version-string": "4.8.0"},
++    { "name": "dirent", "version-string": "1.24"},
++    { "name": "gtest", "version-string": "1.14.0"},
++    { "name": "pybind11", "version-string": "2.11.1"},
++    { "name": "glew", "version-string": "2.2.0"},
++    { "name": "glfw3", "version-string": "3.3.9"},
++    { "name": "hdf5", "version-string": "1.14.2"},
++    { "name": "protobuf", "version-string": "3.21.12"}
++  ]
++}
+-- 
+2.54.0
+
